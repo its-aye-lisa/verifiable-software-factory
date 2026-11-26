@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Aegis: Tier 1 Fast-Check (<1s)",
+      "type": "shell",
+      "command": "make fast-check",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Aegis: Full 9-Gate Verifiable Factory (FedRAMP/IL4/SLSA L4)",
+      "type": "shell",
+      "command": "make factory && make admit",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Aegis: Live DAST & FIPS 140-3 Probe",
+      "type": "shell",
+      "command": "make dast",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Aegis: 6 Untrusted-Developer Red-Team Simulations",
+      "type": "shell",
+      "command": "make simulate-attacks",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Aegis: Serve Verified Tic-Tac-Toe & Assurance Portal (FIPS 140-3)",
+      "type": "shell",
+      "command": "make serve",
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# Zero-Trust Microsegmentation NetworkPolicy (NIST SC-7 / DoD IL4)
+# Default-deny ALL ingress and egress except explicit port 8080 from ingress gateway.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: aegis-tictactoe-zero-trust
+  namespace: aegis-mission
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: aegis-tictactoe
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: istio-system
+      ports:
+        - protocol: TCP
+          port: 8080
+  # Zero outbound egress allowed — eliminates covert data exfiltration even if compromised!
+  egress: []

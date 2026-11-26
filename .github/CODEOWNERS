@@ -1,0 +1,22 @@
+# =============================================================================
+# Platform-Enforced Two-Person Integrity (2PI) & Separation of Duties (SoD)
+# =============================================================================
+# Replace placeholder handles with your GitHub organization teams.
+# Untrusted application developers MUST NOT hold approval rights over
+# security policies, clean-room verifiers, factory gates, or CI workflows.
+
+# Application code: requires Peer Reviewer + Security Auditor
+/app/                     @peer-reviewers @security-auditors
+
+# Spec-Driven Single Source of Truth: requires Product Intent Owner + IV&V
+/spec/                    @intent-owners @cleanroom-ivv
+
+# Independent Clean-Room Verifiers: isolated from app developers!
+/cleanroom/               @cleanroom-ivv @security-auditors
+
+# Software Factory, OPA Policies, IaC & CI/CD Control Plane: Security + Platform only
+/policy/                  @security-auditors @platform-ops
+/factory/                 @security-auditors @platform-ops
+/infra/                   @security-auditors @platform-ops
+/.github/                 @security-auditors @platform-ops
+/Dockerfile               @security-auditors @platform-ops

@@ -1,0 +1,10 @@
+# Build outputs & ephemeral factory state (NEVER commit signing keys!)
+bin/
+dist/
+.factory-state/
+*.key.json
+*.pem
+.env
+.env.*
+.DS_Store
+.agents/workflows/*.bak

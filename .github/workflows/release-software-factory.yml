@@ -1,0 +1,220 @@
+# =============================================================================
+# Platform One-Comparable Release Software Factory for Tic-Tac-Toe
+# =============================================================================
+# Enclave A: Primary Hermetic FIPS 140-3 Build + SBOM + OpenVEX + SARIF + VRA
+# Enclave B: Separate-Runner Clean-Room Bit-for-Bit Rebuilder
+# Enclave C: Hardened Scratch Image -> Syft + Grype + Trivy Image Scans ->
+#            OWASP ZAP Baseline + OpenAPI API DAST -> ghcr.io + GitHub Native
+#            SLSA/SBOM Attestations + Cosign Keyless OIDC Signing
+# =============================================================================
+name: Release Software Factory (Platform One / FedRAMP Mod / DoD IL4 / SLSA L4)
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*.*.*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+  security-events: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/tictactoe
+
+jobs:
+  primary-hermetic-factory:
+    name: Enclave A — Primary Hermetic FIPS 140-3 Software Factory
+    runs-on: ubuntu-latest
+    outputs:
+      binary_sha256: ${{ steps.hashes.outputs.binary_sha256 }}
+      source_sha256: ${{ steps.hashes.outputs.source_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+
+      - name: Run Full 9-Gate Verifiable Software Factory Pipeline
+        run: make factory
+
+      - name: Verify Zero-Trust Admission Gatekeeper (9/9 Controls)
+        run: make admit
+
+      - name: OPA Policy-as-Code Gate on FedRAMP/IL4 Evidence
+        run: |
+          curl -sSL https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz | tar -xz conftest
+          ./conftest test dist/fedramp-il4-evidence.json infra/k8s/deployment.yaml -p policy/opa
+
+      - name: Record Primary Immutable Digests
+        id: hashes
+        run: |
+          BIN_SHA=$(sha256sum dist/tictactoe | awk '{print $1}')
+          SRC_SHA=$(jq -r '.sourceTreeSha256' dist/fedramp-il4-evidence.json)
+          echo "binary_sha256=${BIN_SHA}" >> "$GITHUB_OUTPUT"
+          echo "source_sha256=${SRC_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Aegis SARIF 2.1.0 Report
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: dist/aegis-findings.sarif
+          category: aegis-factory-sast-dast
+
+      - name: Upload Release Artifacts & Compliance Evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: tictactoe-primary-release
+          path: |
+            dist/
+            .factory-state/keys/trust-roots.json
+
+  independent-cleanroom-enclave:
+    name: Enclave B — Independent Clean-Room Bit-for-Bit Rebuilder (Separate Runner)
+    needs: primary-hermetic-factory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+
+      - name: Clean-Room Cold Rebuild from Scratch (Zero Shared Cache / Separate VM)
+        env:
+          CGO_ENABLED: "0"
+          GOPROXY: "off"
+          GOSUMDB: "off"
+          GOFLAGS: "-mod=readonly"
+          GOFIPS140: "v1.0.0"
+          SOURCE_DATE_EPOCH: "1735689600"
+          TZ: "UTC"
+          LC_ALL: "C"
+        run: |
+          go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o /tmp/cleanroom-tictactoe ./app/cmd/tictactoe
+          CLEAN_SHA=$(sha256sum /tmp/cleanroom-tictactoe | awk '{print $1}')
+          PRIMARY_SHA="${{ needs.primary-hermetic-factory.outputs.binary_sha256 }}"
+          echo "Primary Factory SHA-256 : ${PRIMARY_SHA}"
+          echo "Independent Clean-Room  : ${CLEAN_SHA}"
+          if [ "${CLEAN_SHA}" != "${PRIMARY_SHA}" ]; then
+            echo "FATAL: BIT-FOR-BIT REPRODUCIBILITY MISMATCH (POSSIBLE BUILD COMPROMISE!)"
+            exit 1
+          fi
+          echo "VERIFIED: 100% Bit-for-Bit Identical Across Independent Runners!"
+
+  container-dual-scan-zap-dast-and-sign:
+    name: Enclave C — Scratch Image, Syft/Grype + Trivy, OWASP ZAP DAST, GHCR & Cosign
+    needs: [ primary-hermetic-factory, independent-cleanroom-enclave ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Verified Release Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tictactoe-primary-release
+
+      - name: Compute Unified Immutable Image Tag
+        id: meta
+        run: echo "image_tag=${IMAGE_NAME}:sha-${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Hardened Scratch OCI Image (DISA Container STIG)
+        run: |
+          docker build -t "${{ steps.meta.outputs.image_tag }}" .
+
+      - name: Anchore Syft — Generate Container Image CycloneDX 1.5 SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.image_tag }}
+          format: cyclonedx-json
+          output-file: dist/image-sbom.cdx.json
+
+      - name: Anchore Grype — Container Image Vulnerability Scan (Fail on HIGH/CRITICAL)
+        uses: anchore/scan-action@v4
+        id: grype_img
+        with:
+          image: ${{ steps.meta.outputs.image_tag }}
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
+      - name: Upload Grype Image SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype_img.outputs.sarif }}
+          category: grype-container
+
+      - name: Aqua Trivy — Dual-Scanner Container Image Scan (Fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: '${{ steps.meta.outputs.image_tag }}'
+          format: 'sarif'
+          output: 'trivy-image.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Upload Trivy Image SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+          category: trivy-container
+
+      - name: Start Hardened Container for Live OWASP ZAP Baseline & OpenAPI DAST
+        run: |
+          docker run -d --name tictactoe-dast --read-only --cap-drop=ALL --security-opt=no-new-privileges:true -p 127.0.0.1:8080:8080 "${{ steps.meta.outputs.image_tag }}"
+          sleep 2
+          curl -fsS http://127.0.0.1:8080/health | grep '"fips140Enabled":true'
+
+      - name: OWASP ZAP — Web UI Baseline DAST Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'http://127.0.0.1:8080'
+          cmd_options: '-a'
+          fail_action: true
+
+      - name: OWASP ZAP — Active OpenAPI DAST Scan (spec/openapi.yaml)
+        uses: zaproxy/action-api-scan@v0.7.0
+        with:
+          target: 'spec/openapi.yaml'
+          format: openapi
+          fail_action: true
+
+      - name: Tear Down DAST Container
+        if: always()
+        run: docker rm -f tictactoe-dast || true
+
+      - name: Log in to Free GitHub Container Registry (ghcr.io)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push Hardened OCI Image to ghcr.io
+        id: push
+        run: |
+          docker push "${{ steps.meta.outputs.image_tag }}"
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${{ steps.meta.outputs.image_tag }}")
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: GitHub Native SLSA Build Provenance Attestation (Free OIDC)
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attach CycloneDX 1.5 SBOM Attestation (Free OIDC)
+        uses: actions/attest-sbom@v2
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          sbom-path: dist/image-sbom.cdx.json
+          push-to-registry: true
+
+      - name: Cosign Keyless OIDC Image Signing (Sigstore / Rekor Transparency Log)
+        uses: sigstore/cosign-installer@v3.7.0
+      - run: cosign sign --yes "${{ steps.push.outputs.digest }}"

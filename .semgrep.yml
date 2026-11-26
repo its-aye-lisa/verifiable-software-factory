@@ -1,0 +1,61 @@
+# =============================================================================
+# Semgrep Custom Rules — Untrusted Developer, Memory Safety & FedRAMP/IL4 Guard
+# =============================================================================
+# Runs alongside Semgrep community rulesets (p/default, p/golang,
+# p/owasp-top-ten, p/security-audit, p/cwe-top-25) in CI/CD.
+# =============================================================================
+rules:
+  - id: aegis-forbid-go-unsafe-memory-safety
+    languages: [go]
+    severity: ERROR
+    message: >
+      CISA/NSA Memory Safety violation: importing 'unsafe' or cgo ('C') is
+      prohibited in application code.
+    patterns:
+      - pattern-either:
+          - pattern: import "unsafe"
+          - pattern: import "C"
+    paths:
+      include:
+        - app/
+
+  - id: aegis-forbid-os-exec-in-game-kernel
+    languages: [go]
+    severity: ERROR
+    message: >
+      Untrusted-Developer AST Confinement violation: pure game kernel
+      (app/pkg/tictactoe) must NEVER invoke os/exec, net, or syscall.
+    patterns:
+      - pattern-either:
+          - pattern: import "os/exec"
+          - pattern: import "net"
+          - pattern: import "net/http"
+          - pattern: import "syscall"
+    paths:
+      include:
+        - app/pkg/tictactoe/
+
+  - id: aegis-forbid-init-in-game-kernel
+    languages: [go]
+    severity: ERROR
+    message: >
+      Untrusted-Developer Confinement violation: hidden init() functions are
+      prohibited in app/pkg/tictactoe.
+    pattern: |
+      func init() {
+        ...
+      }
+    paths:
+      include:
+        - app/pkg/tictactoe/
+
+  - id: aegis-http-server-require-timeouts
+    languages: [go]
+    severity: WARNING
+    message: >
+      NIST SC-5 / Slowloris DoS protection: avoid bare http.ListenAndServe;
+      use http.Server with explicit ReadHeaderTimeout, ReadTimeout, and WriteTimeout.
+    pattern: http.ListenAndServe($ADDR, $HANDLER)
+    paths:
+      include:
+        - app/

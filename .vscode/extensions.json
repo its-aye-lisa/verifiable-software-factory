@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "golang.go",
+    "tsandall.opa",
+    "ms-azuretools.vscode-docker",
+    "hashicorp.terraform",
+    "redhat.vscode-yaml",
+    "exiasr.hadolint"
+  ]
+}

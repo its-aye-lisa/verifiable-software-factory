@@ -1,0 +1,215 @@
+# =============================================================================
+# PR Fast Gate — Full SAST (Semgrep + CodeQL + Gosec + Aegis AST),
+# Secrets (Gitleaks), Dual-SCA (Trivy + Grype + Syft + govulncheck + Dep Review),
+# IaC/STIG (Hadolint + OPA/Conftest + Trivy Config) & Local DAST
+# =============================================================================
+name: PR Security & Compliance Gate (SSDF / FedRAMP Mod / DoD IL4)
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+concurrency:
+  group: pr-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+jobs:
+  sast-secrets-invariants:
+    name: Gate 1 — Secrets (Gitleaks), SAST (Semgrep + Gosec + Aegis AST) & Invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache: true
+
+      - name: Secret Scanning (Gitleaks — NIST IA-5 / SSDF PS.1)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Aegis Fast-Check (Trojan Source, Memory-Safety/AST Confinement, Zero-Dep, go vet, Exhaustive Invariants)
+        env:
+          GOPROXY: "off"
+          GOSUMDB: "off"
+          CGO_ENABLED: "0"
+          GOFIPS140: "v1.0.0"
+          GODEBUG: "fips140=on"
+        run: go run ./factory/cmd/factory fast-check
+
+      - name: SAST — Semgrep (Community OWASP/Golang/CWE-25 + Custom .semgrep.yml)
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/default
+            p/golang
+            p/owasp-top-ten
+            p/security-audit
+            p/cwe-top-25
+            .semgrep.yml
+          generateSarif: "1"
+        env:
+          SEMGREP_SEND_METRICS: "off"
+
+      - name: Upload Semgrep SARIF to GitHub Security Tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep-sast
+
+      - name: SAST — Gosec (Go Security Checker SARIF)
+        uses: securego/gosec@v2.22.2
+        with:
+          args: '-no-fail -fmt sarif -out gosec-results.sarif ./app/... ./factory/...'
+
+      - name: Upload Gosec SARIF to GitHub Security Tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gosec-results.sarif
+          category: gosec-sast
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'go' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  dual-sca-sbom-and-deps:
+    name: Gate 2 — Dual-SCA (Trivy + Syft/Grype + govulncheck) & Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache: true
+
+      - name: GitHub Dependency Review (blocks vulnerable/unlicensed PR deps)
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+      - name: Reachability-Aware Go SCA (govulncheck — FedRAMP 20x VER)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck -show verbose ./...
+
+      - name: Anchore Syft — Generate CycloneDX 1.5 SBOM (Platform One Standard)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: syft-fs.cdx.json
+
+      - name: Anchore Grype — Scan Syft SBOM (Fail on HIGH/CRITICAL)
+        uses: anchore/scan-action@v4
+        id: grype
+        with:
+          sbom: syft-fs.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: sarif
+
+      - name: Upload Grype SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: grype-sca
+
+      - name: Aqua Trivy — Filesystem, Secrets & IaC Misconfig Scan (Dual-Scanner Defense)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Upload Trivy FS SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs-sca
+
+  iac-and-policy-as-code:
+    name: Gate 3 — IaC & Container Policy-as-Code (OPA + Hadolint + Trivy Config)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hadolint Dockerfile STIG Lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
+      - name: Trivy IaC Config Scan (Kubernetes & Terraform)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'config'
+          scan-ref: 'infra/'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: OPA / Conftest Policy-as-Code (FedRAMP IL4 & DISA Container STIG)
+        run: |
+          curl -sSL https://github.com/open-policy-agent/conftest/releases/download/v0.56.0/conftest_0.56.0_Linux_x86_64.tar.gz | tar -xz conftest
+          ./conftest test infra/k8s/deployment.yaml -p policy/opa
+
+      - name: Validate Terraform / OpenTofu Governance IaC Syntax
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - run: |
+          cd infra/terraform
+          terraform init -backend=false
+          terraform validate
+
+  fast-local-dast:
+    name: Gate 4 — Fast Local DAST & FIPS 140-3 Runtime Probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.3'
+          cache: true
+      - name: Build FIPS 140-3 Tic-Tac-Toe binary & run 10-probe Live DAST / STIG suite
+        env:
+          CGO_ENABLED: "0"
+          GOPROXY: "off"
+          GOSUMDB: "off"
+          GOFIPS140: "v1.0.0"
+        run: |
+          mkdir -p dist
+          go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o dist/tictactoe ./app/cmd/tictactoe
+          go run ./factory/cmd/factory dast

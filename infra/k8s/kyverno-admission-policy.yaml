@@ -1,0 +1,52 @@
+# Platform One Big Bang-Style Kyverno ClusterPolicy
+# Enforces Cosign keyless OIDC image signature + SLSA Provenance attestation
+# before Kubernetes will schedule any pod from ghcr.io.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: aegis-verify-supply-chain-slsa
+  annotations:
+    policies.kyverno.io/title: Verify Cosign Signature & SLSA Provenance (DoD IL4 / SSDF)
+    policies.kyverno.io/category: Software Supply Chain Security
+    policies.kyverno.io/severity: critical
+spec:
+  validationFailureAction: Enforce
+  background: false
+  webhookTimeoutSeconds: 20
+  failurePolicy: Fail
+  rules:
+    - name: verify-cosign-oidc-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - aegis-mission
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/*"
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subjectRegExp: "^https://github.com/.*/.github/workflows/release-software-factory.yml@refs/(heads/main|tags/v.*)$"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
+          attestations:
+            - type: https://slsa.dev/provenance/v1
+              attestors:
+                - entries:
+                    - keyless:
+                        issuer: "https://token.actions.githubusercontent.com"
+                        subjectRegExp: "^https://github.com/.*/.github/workflows/release-software-factory.yml@refs/(heads/main|tags/v.*)$"
+                        rekor:
+                          url: "https://rekor.sigstore.dev"
+              conditions:
+                - all:
+                    - key: "{{ buildDefinition.buildType }}"
+                      operator: Equals
+                      value: "https://aegis.gov/hermetic-go-build/v1"

@@ -1,0 +1,23 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.exclude": {
+    "**/.factory-state": true
+  },
+  "search.exclude": {
+    "dist/**": true,
+    ".factory-state/**": true
+  },
+  "go.useLanguageServer": true,
+  "go.lintTool": "staticcheck",
+  "go.testFlags": ["-count=1"],
+  "go.toolsEnvVars": {
+    "CGO_ENABLED": "0",
+    "GOPROXY": "off",
+    "GOFIPS140": "v1.0.0"
+  }
+}

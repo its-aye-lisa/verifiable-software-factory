@@ -1,0 +1,17 @@
+{
+  "vsf-zero-trust-pretool-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|view_file|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ./hooks/factory_guard.py || printf '{\"decision\":\"force_ask\",\"reason\":\"vsf-zero-trust-pretool-guard unavailable; manual approval required\"}\\n'",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

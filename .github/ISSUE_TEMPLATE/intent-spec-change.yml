@@ -1,0 +1,44 @@
+name: "Intent & Spec Change Request"
+description: "Express user intent to evolve spec/app.spec.json via the Spec-Driven Verifiable Software Factory"
+title: "[INTENT] "
+labels: ["intent-spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe **what** the system should do and **which formal invariants** must hold.
+        Do not edit application code directly—the Software Factory enforces `spec/app.spec.json` as the single source of truth.
+  - type: textarea
+    id: intent-summary
+    attributes:
+      label: Intent Summary
+      description: Plain-English description of the desired capability or rule change.
+      placeholder: "Example: Add optional 4x4 board mode or expose match history digest in /api/game/move."
+    validations:
+      required: true
+  - type: textarea
+    id: formal-invariants
+    attributes:
+      label: Formal Invariants
+      description: Security & correctness properties that MUST hold across ALL reachable states.
+      placeholder: "- TTT-INV-6: No state transition may bypass turn validation or leak actor PII."
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-vectors
+    attributes:
+      label: Acceptance Test Vectors
+      description: Concrete JSON input -> expected output vectors to add to spec/app.spec.json (and verified by independent Clean-Room C/GCC/Clang kernel).
+      render: json
+    validations:
+      required: true
+  - type: dropdown
+    id: impact-level
+    attributes:
+      label: Compliance Impact Assessment (FedRAMP Moderate / DoD IL4)
+      options:
+        - "No new external dependencies / Pure kernel change (Lowest Risk)"
+        - "New HTTP API endpoint (Requires DAST + STIG header & schema checks)"
+        - "Cryptographic or AuthZ policy change (Requires Security Auditor + IV&V 2PI)"
+    validations:
+      required: true

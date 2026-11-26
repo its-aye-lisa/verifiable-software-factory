@@ -1,0 +1,30 @@
+name: "Security POA&M / Autonomous Defense Remediation"
+description: "Track a FedRAMP VDR / BOD 26-04 vulnerability, VEX disposition, or Red-Team regression"
+title: "[POA&M] "
+labels: ["security-poam", "autonomous-defense"]
+body:
+  - type: input
+    id: finding-id
+    attributes:
+      label: CVE / Rule / Red-Team Attack ID
+      placeholder: "CVE-2026-XXXXX or ATK-06"
+    validations:
+      required: true
+  - type: dropdown
+    id: severity-sla
+    attributes:
+      label: Severity & FedRAMP VDR / BOD 26-04 SLA Window
+      options:
+        - "CRITICAL / CISA KEV (15 Days)"
+        - "HIGH (30 Days)"
+        - "MODERATE (90 Days)"
+        - "LOW (180 Days)"
+    validations:
+      required: true
+  - type: textarea
+    id: reachability
+    attributes:
+      label: Reachability & VRA Analysis (govulncheck / OpenVEX)
+      description: Is the vulnerable symbol reachable in the static call graph? If not, document OpenVEX justification.
+    validations:
+      required: true

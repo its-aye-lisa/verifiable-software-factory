@@ -1,0 +1,71 @@
+{
+  "policyVersion": "2.1.0",
+  "factoryName": "Verifiable Software Factory (Platform One / FedRAMP Mod / DoD IL4)",
+  "targetBinaryName": "tictactoe",
+  "targetMainPackage": "./app/cmd/tictactoe",
+  "sourceDateEpoch": 1735689600,
+  "requireZeroThirdPartyDependencies": true,
+  "allowedExternalModules": [],
+  "twoPersonIntegrity": {
+    "requiredRoles": [
+      "developer",
+      "peer_reviewer",
+      "security_auditor"
+    ],
+    "requireDistinctKeys": true
+  },
+  "confinedPackages": [
+    {
+      "pathPrefix": "app/pkg/tictactoe",
+      "allowedImports": [],
+      "forbidInitFunctions": true,
+      "forbidGlobalMutableVars": true,
+      "forbidUnsafe": true,
+      "forbidCgo": true
+    }
+  ],
+  "globalForbiddenConstructs": {
+    "forbidUnicodeBidi": true,
+    "forbidZeroWidthChars": true,
+    "forbidHardcodedSecrets": true,
+    "forbidUnsafeAcrossApp": true
+  },
+  "cleanRoom": {
+    "requireBitForBitReproducibleBuild": true,
+    "requireDiverseCompilerCheck": true,
+    "requiredCompilers": [
+      "gcc",
+      "clang"
+    ],
+    "appSpecPath": "spec/tictactoe.spec.json",
+    "tictactoeCReferenceSource": "cleanroom/c-verifier/tictactoe_kernel.c"
+  },
+  "compliance": {
+    "targetBaselines": [
+      "FedRAMP-Moderate-Rev5",
+      "FedRAMP-20x-CR26",
+      "DoD-CC-SRG-IL4",
+      "NIST-SP-800-218-SSDF-v1.1",
+      "CISA-NSA-Memory-Safety-2026"
+    ],
+    "requireFIPS140": true,
+    "goFIPS140Version": "v1.0.0",
+    "requireDAST": true,
+    "requireSARIF": true,
+    "requireOpenVEX": true,
+    "vulnSLADays": {
+      "critical": 15,
+      "high": 30,
+      "moderate": 90,
+      "low": 180
+    }
+  },
+  "admission": {
+    "slsaTargetLevel": "SLSA_BUILD_LEVEL_4_EQUIVALENT",
+    "failClosed": true,
+    "requireCleanRoomSignature": true,
+    "requireDiverseVerificationSignature": true,
+    "requireDASTSignature": true,
+    "requireSBOM": true
+  }
+}

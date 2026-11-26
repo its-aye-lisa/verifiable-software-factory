@@ -1,0 +1,26 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "verifiable-software-factory",
+  "displayName": "Verifiable Software Factory",
+  "version": "2.1.0",
+  "description": "Platform One-comparable, untrusted-developer-resilient SLSA L4, FIPS 140-3, Clean-Room, and FedRAMP/DoD IL4 software factory skills, auditors, and hooks.",
+  "skills": "./.agents/skills",
+  "suggestedPrompts": [
+    "Run /compliance-gate against ../new-vision-gaming and summarize 3PAO readiness",
+    "Run /conmon-upkeep to verify all 6 untrusted-developer red-team simulations",
+    "Audit our OPA Rego and Gatekeeper policies with the supply-chain-auditor subagent"
+  ],
+  "author": {
+    "name": "New Vision Gaming Engineering",
+    "url": "https://github.com/new-vision-gaming"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "slsa",
+    "fedramp",
+    "devsecops",
+    "sbom",
+    "cleanroom",
+    "fips-140-3"
+  ]
+}
