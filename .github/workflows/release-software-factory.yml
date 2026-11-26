@@ -131,7 +131,7 @@ jobs:
           output-file: dist/image-sbom.cdx.json
 
       - name: Anchore Grype — Container Image Vulnerability Scan (Fail on HIGH/CRITICAL)
-        uses: anchore/scan-action@v4
+        uses: anchore/scan-action@v7
         id: grype_img
         with:
           image: ${{ steps.meta.outputs.image_tag }}
