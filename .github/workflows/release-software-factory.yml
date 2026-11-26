@@ -169,7 +169,7 @@ jobs:
           curl -fsS http://127.0.0.1:8080/health | grep '"fips140Enabled":true'
 
       - name: OWASP ZAP — Web UI Baseline DAST Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://127.0.0.1:8080'
           cmd_options: '-a'
