@@ -32,6 +32,7 @@ provider "github" {
 resource "github_repository" "factory" {
   name        = var.repository_name
   description = "Spec-Driven, Platform One-Comparable, Untrusted-Developer-Resilient Verifiable Software Factory (FedRAMP Moderate / DoD IL4 / SSDF)"
+  # trivy:ignore:AVD-GIT-0001 Intentionally public open-source repository to enable free GitHub Advanced Security
   visibility  = "public" # Public repos unlock 100% Free GitHub Advanced Security (CodeQL, Secret Scanning, Actions, GHCR)
 
   has_issues             = true
