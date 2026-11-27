@@ -33,7 +33,7 @@ jobs:
       binary_sha256: ${{ steps.hashes.outputs.binary_sha256 }}
       source_sha256: ${{ steps.hashes.outputs.source_sha256 }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.4'
@@ -76,7 +76,7 @@ jobs:
     needs: primary-hermetic-factory
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.4'
@@ -108,7 +108,7 @@ jobs:
     needs: [ primary-hermetic-factory, independent-cleanroom-enclave ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download Verified Release Artifacts
         uses: actions/download-artifact@v8

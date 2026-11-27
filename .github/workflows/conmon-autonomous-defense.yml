@@ -27,9 +27,9 @@ jobs:
     name: Daily Autonomous Defense — SCA Drift & Red-Team Control Verification
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Checkout Decoupled Reference Target App (new-vision-gaming)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/new-vision-gaming
           path: _target-app
@@ -84,7 +84,7 @@ jobs:
     name: OpenSSF Scorecard Supply-Chain Posture Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ossf/scorecard-action@v2.6.0
