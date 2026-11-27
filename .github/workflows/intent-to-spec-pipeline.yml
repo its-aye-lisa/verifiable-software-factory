@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.issue.labels.*.name, 'intent-spec')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Validate Structured Intent Completeness (SSDF PW.1 / Requirements Traceability)
         id: validate

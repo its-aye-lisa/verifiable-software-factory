@@ -26,12 +26,12 @@ jobs:
     name: Gate 1 — Secrets (Gitleaks), SAST (Semgrep + Gosec + Aegis AST) & Invariants
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Checkout Decoupled Reference Target App (new-vision-gaming)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/new-vision-gaming
           path: _target-app
@@ -99,7 +99,7 @@ jobs:
       matrix:
         language: [ 'go' ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
@@ -113,7 +113,7 @@ jobs:
     name: Gate 2 — Dual-SCA (Trivy + Syft/Grype + govulncheck) & Dependency Review
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v5
         with:
           go-version: '1.27.4'
@@ -173,9 +173,9 @@ jobs:
     name: Gate 3 — IaC & Container Policy-as-Code (OPA + Hadolint + Trivy Config)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Checkout Decoupled Reference Target App (for Dockerfile STIG Lint)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/new-vision-gaming
           path: _target-app
@@ -212,9 +212,9 @@ jobs:
     name: Gate 4 — Fast Local DAST & FIPS 140-3 Runtime Probe
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Checkout Decoupled Reference Target App (new-vision-gaming)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/new-vision-gaming
           path: _target-app
