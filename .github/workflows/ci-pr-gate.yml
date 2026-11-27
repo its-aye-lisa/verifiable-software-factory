@@ -30,9 +30,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout Decoupled Reference Target App (new-vision-gaming)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/new-vision-gaming
+          path: _target-app
+
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.27.4'
           cache: true
 
       - name: Secret Scanning (Gitleaks — NIST IA-5 / SSDF PS.1)
@@ -40,14 +46,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Aegis Fast-Check (Trojan Source, Memory-Safety/AST Confinement, Zero-Dep, go vet, Exhaustive Invariants)
+      - name: Factory Unit Tests & Aegis Fast-Check Against Reference Target
         env:
           GOPROXY: "off"
           GOSUMDB: "off"
           CGO_ENABLED: "0"
           GOFIPS140: "v1.0.0"
           GODEBUG: "fips140=on"
-        run: go run ./factory/cmd/factory fast-check
+        run: |
+          make build
+          go test ./...
+          ./bin/factory fast-check --target _target-app
 
       - name: SAST — Semgrep (Community OWASP/Golang/CWE-25 + Custom .semgrep.yml)
         uses: semgrep/semgrep-action@v1
@@ -65,7 +74,7 @@ jobs:
 
       - name: Upload Semgrep SARIF to GitHub Security Tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
           category: semgrep-sast
@@ -73,11 +82,11 @@ jobs:
       - name: SAST — Gosec (Go Security Checker SARIF)
         uses: securego/gosec@v2.22.2
         with:
-          args: '-no-fail -fmt sarif -out gosec-results.sarif ./app/... ./factory/...'
+          args: '-no-fail -fmt sarif -out gosec-results.sarif ./factory/...'
 
       - name: Upload Gosec SARIF to GitHub Security Tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: gosec-results.sarif
           category: gosec-sast
@@ -91,12 +100,12 @@ jobs:
         language: [ 'go' ]
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
-      - uses: github/codeql-action/autobuild@v3
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/autobuild@v4
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
 
@@ -107,7 +116,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.27.4'
           cache: true
 
       - name: GitHub Dependency Review (blocks vulnerable/unlicensed PR deps)
@@ -138,7 +147,7 @@ jobs:
 
       - name: Upload Grype SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
           category: grype-sca
@@ -155,7 +164,7 @@ jobs:
 
       - name: Upload Trivy FS SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs-sca
@@ -165,11 +174,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout Decoupled Reference Target App (for Dockerfile STIG Lint)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/new-vision-gaming
+          path: _target-app
 
       - name: Hadolint Dockerfile STIG Lint
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile
+          dockerfile: _target-app/Dockerfile
           failure-threshold: error
 
       - name: Trivy IaC Config Scan (Kubernetes & Terraform)
@@ -199,17 +213,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout Decoupled Reference Target App (new-vision-gaming)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/new-vision-gaming
+          path: _target-app
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.27.4'
           cache: true
-      - name: Build FIPS 140-3 Tic-Tac-Toe binary & run 10-probe Live DAST / STIG suite
+      - name: Build FIPS 140-3 Reference Target & Run Live DAST / STIG Probe
         env:
           CGO_ENABLED: "0"
           GOPROXY: "off"
           GOSUMDB: "off"
           GOFIPS140: "v1.0.0"
         run: |
-          mkdir -p dist
-          go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o dist/tictactoe ./app/cmd/tictactoe
-          go run ./factory/cmd/factory dast
+          make build
+          mkdir -p _target-app/dist
+          (cd _target-app && go build -trimpath -buildvcs=false -ldflags="-s -w -buildid=" -o dist/nvg-arcade ./app/cmd/nvg-arcade)
+          ./bin/factory dast --target _target-app
