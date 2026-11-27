@@ -35,17 +35,21 @@ const (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
-	cmd := os.Args[1]
+	var cmd string
 	targetDir := os.Getenv("TARGET_DIR")
-	for i := 2; i < len(os.Args); i++ {
+	for i := 1; i < len(os.Args); i++ {
 		if os.Args[i] == "--target" && i+1 < len(os.Args) {
 			targetDir = os.Args[i+1]
 			i++
+			continue
 		}
+		if cmd == "" {
+			cmd = os.Args[i]
+		}
+	}
+	if cmd == "" {
+		printUsage()
+		os.Exit(1)
 	}
 	if targetDir == "" {
 		cwd, err := os.Getwd()

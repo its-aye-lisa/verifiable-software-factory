@@ -6,13 +6,14 @@
   "description": "Platform One-comparable, untrusted-developer-resilient SLSA L4, FIPS 140-3, Clean-Room, and FedRAMP/DoD IL4 software factory skills, auditors, and hooks.",
   "skills": "./.agents/skills",
   "suggestedPrompts": [
+    "Start a /bounded-session brief for our next factory gate or ConMon task",
     "Run /compliance-gate against ../new-vision-gaming and summarize 3PAO readiness",
     "Run /conmon-upkeep to verify all 6 untrusted-developer red-team simulations",
     "Audit our OPA Rego and Gatekeeper policies with the supply-chain-auditor subagent"
   ],
   "author": {
-    "name": "New Vision Gaming Engineering",
-    "url": "https://github.com/new-vision-gaming"
+    "name": "Alyssa Feola",
+    "url": "https://github.com/its-aye-lisa/verifiable-software-factory"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -21,6 +22,7 @@
     "devsecops",
     "sbom",
     "cleanroom",
-    "fips-140-3"
+    "fips-140-3",
+    "bounded-sessions"
   ]
 }

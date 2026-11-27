@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.27.4'
 
       - name: Run Full 9-Gate Verifiable Software Factory Pipeline
         run: make factory
@@ -58,13 +58,13 @@ jobs:
           echo "source_sha256=${SRC_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Upload Aegis SARIF 2.1.0 Report
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: dist/aegis-findings.sarif
           category: aegis-factory-sast-dast
 
       - name: Upload Release Artifacts & Compliance Evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tictactoe-primary-release
           path: |
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.3'
+          go-version: '1.27.4'
 
       - name: Clean-Room Cold Rebuild from Scratch (Zero Shared Cache / Separate VM)
         env:
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download Verified Release Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: tictactoe-primary-release
 
@@ -131,7 +131,7 @@ jobs:
           output-file: dist/image-sbom.cdx.json
 
       - name: Anchore Grype — Container Image Vulnerability Scan (Fail on HIGH/CRITICAL)
-        uses: anchore/scan-action@v4
+        uses: anchore/scan-action@v7
         id: grype_img
         with:
           image: ${{ steps.meta.outputs.image_tag }}
@@ -141,13 +141,13 @@ jobs:
 
       - name: Upload Grype Image SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.grype_img.outputs.sarif }}
           category: grype-container
 
       - name: Aqua Trivy — Dual-Scanner Container Image Scan (Fail on HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ steps.meta.outputs.image_tag }}'
           format: 'sarif'
@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload Trivy Image SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-image.sarif
           category: trivy-container
@@ -169,14 +169,14 @@ jobs:
           curl -fsS http://127.0.0.1:8080/health | grep '"fips140Enabled":true'
 
       - name: OWASP ZAP — Web UI Baseline DAST Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: 'http://127.0.0.1:8080'
           cmd_options: '-a'
           fail_action: true
 
       - name: OWASP ZAP — Active OpenAPI DAST Scan (spec/openapi.yaml)
-        uses: zaproxy/action-api-scan@v0.7.0
+        uses: zaproxy/action-api-scan@v0.10.0
         with:
           target: 'spec/openapi.yaml'
           format: openapi
@@ -187,7 +187,7 @@ jobs:
         run: docker rm -f tictactoe-dast || true
 
       - name: Log in to Free GitHub Container Registry (ghcr.io)
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -201,14 +201,14 @@ jobs:
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
       - name: GitHub Native SLSA Build Provenance Attestation (Free OIDC)
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
       - name: Attach CycloneDX 1.5 SBOM Attestation (Free OIDC)
-        uses: actions/attest-sbom@v2
+        uses: actions/attest-sbom@v4
         with:
           subject-name: ${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push.outputs.digest }}
@@ -216,5 +216,5 @@ jobs:
           push-to-registry: true
 
       - name: Cosign Keyless OIDC Image Signing (Sigstore / Rekor Transparency Log)
-        uses: sigstore/cosign-installer@v3.7.0
+        uses: sigstore/cosign-installer@v4.1.4
       - run: cosign sign --yes "${{ steps.push.outputs.digest }}"

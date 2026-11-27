@@ -30,8 +30,10 @@ This repository contains **zero application business logic**. It builds, verifie
 - **Custom Subagents (`.agents/agents/`):**
   - `supply-chain-auditor` (`pro`, `sandbox`, read-only) -> audits SLSA/SBOM/OpenVEX/SARIF/OPA/FedRAMP 20x controls.
   - `redteam-adversary` (`pro`, `sandbox`) -> develops and validates adversarial `ATK-XX` attack simulations.
+- **Bounded Sessions (`.agents/rules/20-bounded-sessions.md` & `/bounded-session`):**
+  - Separate **Explore** (read-only), **Execute** (bounded edits + tests), and **Clean-Eyes Review** (fresh diff-only audit) sessions; gate commits to `.session/daily-plan.md` by verified facts only; stop & reset on the 2-strike circuit breaker.
 - **Verification Commands:**
   1. `make build` (`< 2s`) -> compiles `bin/factory` with `CGO_ENABLED=0`.
   2. `go test ./...` (`< 2s`) -> unit-tests factory packages.
-  3. `./bin/factory --target ../new-vision-gaming fast-check` (`< 1s`) -> preflight against reference app.
-  4. `./bin/factory --target ../new-vision-gaming run-all && ./bin/factory --target ../new-vision-gaming admit && ./bin/factory --target ../new-vision-gaming simulate-attacks` -> full 9-gate + 6-attack proof.
+  3. `./bin/factory fast-check --target ../new-vision-gaming` (`< 1s`) -> preflight against reference app (`--target` is accepted before or after `<command>`).
+  4. `./bin/factory run-all --target ../new-vision-gaming && ./bin/factory admit --target ../new-vision-gaming && ./bin/factory simulate-attacks --target ../new-vision-gaming` -> full 9-gate + 6-attack proof.

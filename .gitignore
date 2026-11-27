@@ -8,3 +8,9 @@ dist/
 .env.*
 .DS_Store
 .agents/workflows/*.bak
+
+# Local bounded-session state, structured logs & reference target checkout
+.handoff/
+.session/
+output_logs/
+_target-app/
